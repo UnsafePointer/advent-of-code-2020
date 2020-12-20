@@ -1,5 +1,5 @@
 {
-    "python.pythonPath": "/home/unsafepointer/.cache/pypoetry/virtualenvs/modname-0BWdkAWp-py3.8/bin/python", // Change me!
+    "python.pythonPath": "/home/unsafepointer/.cache/pypoetry/virtualenvs/modname-sEhkTgWg-py3.8/bin/python", // Change me!
     "python.linting.pylintEnabled": false,
     "python.linting.flake8Enabled": true,
     "python.linting.enabled": true,
