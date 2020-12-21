@@ -42,7 +42,7 @@ def solve() -> str:
         if square == "#":
             num_of_trees += 1
 
-    return num_of_trees
+    return str(num_of_trees)
 
 
 def main() -> None:

@@ -14,7 +14,7 @@ def solve() -> str:
             continue
         to_find = 2020 - expense
         if to_find in expenses:
-            return to_find * expense
+            return str(to_find * expense)
 
     return "Not found"
 

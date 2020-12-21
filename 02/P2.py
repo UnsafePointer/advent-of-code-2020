@@ -40,7 +40,7 @@ def solve() -> str:
         if password.valid():
             valid_passwords += 1
 
-    return valid_passwords
+    return str(valid_passwords)
 
 
 def main() -> None:
