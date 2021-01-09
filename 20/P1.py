@@ -1,200 +1,81 @@
-from os import linesep
-from typing import List, Optional, Dict, Tuple
+from typing import List, Dict
 from dataclasses import dataclass, field
-from copy import deepcopy, copy
 from enum import Enum, auto
+from os import linesep
+from copy import deepcopy
+from textwrap import dedent
 
 
-class EdgeDirection(Enum):
+class Direction(Enum):
     UP = auto()
     RIGHT = auto()
     DOWN = auto()
     LEFT = auto()
 
 
-def opposite(direction: EdgeDirection) -> EdgeDirection:
-    if direction == EdgeDirection.UP:
-        return EdgeDirection.DOWN
-    elif direction == EdgeDirection.RIGHT:
-        return EdgeDirection.LEFT
-    elif direction == EdgeDirection.DOWN:
-        return EdgeDirection.UP
-    else:  # elif direction == EdgeDirection.LEFT:
-        return EdgeDirection.RIGHT
+def opposite(direction: Direction) -> Direction:
+    if direction == Direction.UP:
+        return Direction.DOWN
+    elif direction == Direction.RIGHT:
+        return Direction.LEFT
+    elif direction == Direction.DOWN:
+        return Direction.UP
+    else:  # elif direction == Direction.LEFT:
+        return Direction.RIGHT
 
 
 @dataclass
 class Edge:
-    edge_data: List[int]
+    edge_data: List[str]
     free: bool = field(default=True)
 
 
 @dataclass
 class Tile:
     tile_id: int
-    tile_data: List[List[int]]
-    edges: Dict[EdgeDirection, Edge] = field(init=False)
+    tile_data: List[List[str]]
+    edges: Dict[Direction, Edge] = field(init=False)
 
     def __post_init__(self) -> None:
         self.edges = make_edges(self)
 
-    def print_data(self) -> None:
-        for data in self.tile_data:
-            print(data)
-
-    def number_of_free_edges_per_direction(self) -> Dict[EdgeDirection, int]:
-        total: Dict[EdgeDirection, int] = {}
-        for edge_direction in self.edges:
-            edge = self.edges[edge_direction]
-            if edge.free:
-                total_for_direction = total.get(edge_direction, 0)
-                total_for_direction += 1
-                total[edge_direction] = total_for_direction
-        return total
-
-    def number_of_free_edges(self) -> int:
-        total = 0
-        for edge_direction in self.edges:
-            edge = self.edges[edge_direction]
-            if edge.free:
-                total += 1
-        return total
+    def __repr__(self) -> str:
+        tile_repr = ""
+        tile_repr += f"Tile: {self.tile_id}"
+        tile_repr += linesep
+        for row in self.tile_data:
+            tile_repr += "".join(row)
+            tile_repr += linesep
+        return tile_repr
 
 
-def make_edges(tile: Tile) -> Dict[EdgeDirection, Edge]:
-    tile_data: List[List[int]] = tile.tile_data
-    up_edge_data: List[int] = []
+def make_edges(tile: Tile) -> Dict[Direction, Edge]:
+    tile_data: List[List[str]] = tile.tile_data
+    up_edge_data: List[str] = []
     for index in range(0, len(tile_data[0])):
         up_edge_data.append(tile_data[0][index])
     up_edge = Edge(up_edge_data)
 
-    down_edge_data: List[int] = []
+    down_edge_data: List[str] = []
     for index in range(0, len(tile_data[len(tile_data) - 1])):
         down_edge_data.append(tile_data[len(tile_data) - 1][index])
     down_edge = Edge(down_edge_data)
 
-    right_edge_data: List[int] = []
+    right_edge_data: List[str] = []
     for index in range(0, len(tile_data[len(tile_data) - 1])):
         right_edge_data.append(tile_data[index][len(tile_data) - 1])
     right_edge = Edge(right_edge_data)
 
-    left_edge_data: List[int] = []
+    left_edge_data: List[str] = []
     for index in range(0, len(tile_data[len(tile_data) - 1])):
         left_edge_data.append(tile_data[index][0])
     left_edge = Edge(left_edge_data)
     return {
-        EdgeDirection.UP: up_edge,
-        EdgeDirection.RIGHT: right_edge,
-        EdgeDirection.DOWN: down_edge,
-        EdgeDirection.LEFT: left_edge,
+        Direction.UP: up_edge,
+        Direction.RIGHT: right_edge,
+        Direction.DOWN: down_edge,
+        Direction.LEFT: left_edge,
     }
-
-
-def make_position_for_direction_from_position(
-    position: Tuple[int, int], direction: EdgeDirection
-) -> Tuple[int, int]:
-    if direction == EdgeDirection.UP:
-        return (position[0], position[1] + 1)
-    elif direction == EdgeDirection.RIGHT:
-        return (position[0] + 1, position[1])
-    elif direction == EdgeDirection.DOWN:
-        return (position[0], position[1] - 1)
-    else:  # elif direction == EdgeDirection.LEFT:
-        return (position[0] - 1, position[1])
-
-
-def make_adjacent_positions_by_directions(
-    position: Tuple[int, int]
-) -> Dict[EdgeDirection, Tuple[int, int]]:
-    positions_by_direction: Dict[EdgeDirection, Tuple[int, int]] = {}
-    for direction in EdgeDirection:
-        positions_by_direction[direction] = make_position_for_direction_from_position(
-            position, direction
-        )
-    return positions_by_direction
-
-
-@dataclass
-class Image:
-    tiles: Dict[Tuple[int, int], Tile] = field(default_factory=lambda: {})
-
-    def available_spots(self) -> List[Tuple[int, int]]:
-        spots: List[Tuple[int, int]] = []
-        for spot in self.tiles:
-            tile = self.tiles[spot]
-            for tile_edge_direction in tile.edges:
-                tile_edge = tile.edges[tile_edge_direction]
-                if tile_edge.free:
-                    free_spot = make_position_for_direction_from_position(
-                        spot, tile_edge_direction
-                    )
-                    spots.append(free_spot)
-        return spots
-
-    def can_append_tile_at_position(
-        self, position: Tuple[int, int], tile: Tile
-    ) -> bool:
-        positions_by_direction = make_adjacent_positions_by_directions(position)
-        for direction in positions_by_direction:
-            position = positions_by_direction[direction]
-            if position in self.tiles:
-                tile_edge = tile.edges[direction]
-                image_tile_in_direction = self.tiles[position]
-                image_tile_edge = image_tile_in_direction.edges[opposite(direction)]
-                if tile_edge.edge_data != image_tile_edge.edge_data:
-                    return False
-        return True
-
-    def append_tile_at_position(self, position: Tuple[int, int], tile: Tile) -> None:
-        positions_by_direction = make_adjacent_positions_by_directions(position)
-        for direction in positions_by_direction:
-            position = positions_by_direction[direction]
-            if position in self.tiles:
-                tile_edge = tile.edges[direction]
-                tile_edge.free = False
-                image_tile_in_direction = self.tiles[position]
-                image_tile_edge = image_tile_in_direction.edges[opposite(direction)]
-                image_tile_edge.free = False
-
-    def undo_append(self, position: Tuple[int, int], tile: Tile) -> None:
-        positions_by_direction = make_adjacent_positions_by_directions(position)
-        for direction in positions_by_direction:
-            position = positions_by_direction[direction]
-            if position in self.tiles:
-                tile_edge = tile.edges[direction]
-                tile_edge.free = True
-                image_tile_in_direction = self.tiles[position]
-                image_tile_edge = image_tile_in_direction.edges[opposite(direction)]
-                image_tile_edge.free = True
-
-    def is_valid(self) -> bool:
-        total_free_edges_per_direction: Dict[EdgeDirection, int] = {}
-        for position in self.tiles:
-            tile = self.tiles[position]
-            free_edges_per_direction = tile.number_of_free_edges_per_direction()
-            for direction in free_edges_per_direction:
-                total_free_edges = total_free_edges_per_direction.get(direction, 0)
-                total_free_edges += free_edges_per_direction[direction]
-                total_free_edges_per_direction[direction] = total_free_edges
-        valid_edges = (
-            total_free_edges_per_direction.get(EdgeDirection.UP, 0)
-            == total_free_edges_per_direction.get(EdgeDirection.RIGHT, 0)
-            == total_free_edges_per_direction.get(EdgeDirection.DOWN, 0)
-            == total_free_edges_per_direction.get(EdgeDirection.LEFT, 0)
-        )
-        corners = self.get_corners()
-        return valid_edges and len(corners) == 4
-
-    def is_empty(self) -> bool:
-        return len(self.tiles) == 0
-
-    def get_corners(self) -> List[int]:
-        corners: List[int] = []
-        for position in self.tiles:
-            tile = self.tiles[position]
-            if tile.number_of_free_edges() == 2:
-                corners.append(tile.tile_id)
-        return corners
 
 
 def flip_horizontal(tile: Tile) -> Tile:
@@ -217,7 +98,13 @@ def rotate(tile: Tile) -> Tile:
     return Tile(tile.tile_id, tile_data)
 
 
+tile_variants_cache: Dict[int, List[Tile]] = {}
+
+
 def make_tile_variants(tile: Tile) -> List[Tile]:
+    if tile.tile_id in tile_variants_cache:
+        return tile_variants_cache[tile.tile_id]
+
     tile_variants: List[Tile] = []
     base_variants: List[Tile] = []
 
@@ -231,53 +118,29 @@ def make_tile_variants(tile: Tile) -> List[Tile]:
             base_variant_rotated = rotate(base_variant_rotated)
             tile_variants.append(base_variant_rotated)
 
-    return tile_variants
+    duplicates: List[int] = []
+    for tile_variant_index in range(0, len(tile_variants) - 1):
+        for another_tile_variant_index in range(
+            tile_variant_index + 1, len(tile_variants)
+        ):
+            if (
+                tile_variants[tile_variant_index].tile_data
+                == tile_variants[another_tile_variant_index].tile_data
+            ):
+                duplicates.append(another_tile_variant_index)
 
-
-def attempt_to_solve(tiles: List[Tile], image: Image) -> Optional[Image]:
-    if not tiles:
-        if image.is_valid():
-            return image
-        else:
-            return None
-
-    for tile in tiles:
-        for tile_variant in make_tile_variants(tile):
-            if image.is_empty():
-                image_copy = Image(deepcopy(image.tiles))
-                tiles_copy = deepcopy(tiles)
-                tile_variant_copy = deepcopy(tile_variant)
-
-                image_copy.tiles[(0, 0)] = tile_variant
-                tiles_copy.remove(tile)
-                result = attempt_to_solve(tiles_copy, image_copy)
-                if result:
-                    return result
-            else:
-                for available_spot in image.available_spots():
-                    if image.can_append_tile_at_position(available_spot, tile_variant):
-                        image.append_tile_at_position(available_spot, tile_variant)
-
-                        image_copy = Image(deepcopy(image.tiles))
-                        tiles_copy = deepcopy(tiles)
-                        tile_variant_copy = deepcopy(tile_variant)
-
-                        image_copy.tiles[available_spot] = tile_variant
-                        tiles_copy.remove(tile)
-                        result = attempt_to_solve(tiles_copy, image_copy)
-                        if result:
-                            return result
-                        else:
-                            image.undo_append(available_spot, tile_variant)
-
-    return None
+    tile_variants_without_dupes = [
+        i for j, i in enumerate(tile_variants) if j not in duplicates
+    ]
+    tile_variants_cache[tile.tile_id] = tile_variants_without_dupes
+    return tile_variants_without_dupes
 
 
 def solve() -> str:
     file = open("input.txt", "r")
     tiles: List[Tile] = []
     tile_id: int
-    tile_data: List[List[int]] = []
+    tile_data: List[List[str]] = []
     while True:
         line = file.readline()
         if line == linesep or line == "":
@@ -290,45 +153,33 @@ def solve() -> str:
             splitted = line.split(" ")
             tile_id = int(splitted[1].split(":")[0])
         else:
-            tile_data.append(
-                [int(x) for x in line.replace(".", "0").replace("#", "1").strip()]
-            )
+            tile_data.append(list(line.strip()))
 
-    # Flip vertical
-    # example_tile = tiles[1]
-    # example_tile_fvertical = flip_vertical(example_tile)
-    # example_tile_fvertical.print_data()
-
-    # Flip vertical + Rotate trice
-    # example_tile = tiles[5]
-    # example_tile.print_data()
-    # print()
-    # example_tile_fvertical = flip_vertical(example_tile)
-    # example_tile_fvertical.print_data()
-    # print()
-    # example_tile_fvertical_rotate = rotate(example_tile_fvertical)
-    # example_tile_fvertical_rotate = rotate(example_tile_fvertical_rotate)
-    # example_tile_fvertical_rotate = rotate(example_tile_fvertical_rotate)
-    # example_tile_fvertical_rotate.print_data()
-    # print()
-
-    # Flip Horizontal
-    # example_tile = tiles[2]
-    # example_tile_fhorizontal = flip_horizontal(example_tile)
-    # example_tile_fhorizontal.print_data()
-
-    image: Image = Image()
-    result = attempt_to_solve(tiles, image)
-    if result is None:
-        return "Not found"
-    result_image: Image = result
-    corners = result_image.get_corners()
-
-    product = 1
-    for corner in corners:
-        product *= corner
-
-    return str(product)
+    result = 1
+    for tile in tiles:
+        possible_appends = 0
+        for tile_edge_direction in tile.edges:
+            tile_edge = tile.edges[tile_edge_direction]
+            for another_tile in tiles:
+                if tile.tile_id == another_tile.tile_id:
+                    continue
+                for another_tile_variant in make_tile_variants(another_tile):
+                    for (
+                        another_tile_variant_edge_direction
+                    ) in another_tile_variant.edges:
+                        another_tile_variant_edge = another_tile_variant.edges[
+                            another_tile_variant_edge_direction
+                        ]
+                        if (
+                            opposite(tile_edge_direction)
+                            == another_tile_variant_edge_direction
+                            and tile_edge.edge_data
+                            == another_tile_variant_edge.edge_data
+                        ):
+                            possible_appends += 1
+        if possible_appends == 2:
+            result *= tile.tile_id
+    return str(result)
 
 
 def main() -> None:
